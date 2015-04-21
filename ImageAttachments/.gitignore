@@ -1,0 +1,4 @@
+*.xcodeproj/*.xcworkspace/xcshareddata/
+*.xcodeproj/*.xcworkspace/xcuserdata/
+*.xcodeproj/xcshareddata/
+*.xcodeproj/xcuserdata/

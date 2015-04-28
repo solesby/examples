@@ -74,7 +74,7 @@
     [super viewDidLoad];
     
     NSArray* strings = @[
-                         @"🔒 This has padlock at beginning",
+                         @"🔒 This has padlock \U0001F512\uFE0E", // http://mts.io/2015/04/21/unicode-symbol-render-text-emoji/
                          @"This has padlock at the end 🔒",
                          @"🔒 This 🔒 has 🔒 several 🔒 padlocks 🔒",
                          @"🔒 This is a multi-line\n🔒 string with padlocks 🔒",

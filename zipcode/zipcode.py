@@ -34,14 +34,28 @@ class USZipcode(models.Model):
     longitude   = models.DecimalField(max_digits=11, decimal_places=8, blank=True, null=True, default=None, db_index=True)
     county      = models.CharField(max_length=50, blank=True , null=True, default=None)
     county_fips = models.CharField(max_length=5 , blank=True , null=True, default=None)
+    area_code   = models.CharField(max_length=3 , blank=True , null=True, default=None, db_index=True)
     timezone    = models.CharField(max_length=20, blank=False, null=False)
     kind        = models.CharField(max_length=1,  blank=True , null=False, db_index=True, choices=(('','Regular'),('M','Military'),('P','PO Box'),('U','Unique')), default='')
 
     class Meta:
         db_table = 'us_zipcode'
+        ordering = [ 'zipcode' ]
 
     def __str__(self):
         return ' '.join((str(self.zipcode), self.city, self.state)).strip()
+
+
+    def distance(self):
+        # Approximate distance in miles = sqrt(x * x + y * y) where
+        # x = 69.1 * (zip2.lat - zip1.lat)
+        # y = 53   * (zip2.lon - zip1.lon)
+        # NOTE: this method will get overridden if distance is added in Queryset below
+        if getattr(self, 'center_lat', 0) and getattr(self, 'center_lon', 0):
+            x = Decimal( 69.1 ) * (self.latitude  - Decimal( self.center_lat ))
+            y = Decimal( 53.0 ) * (self.longitude - Decimal( self.center_lon ))
+            return (x * x + y * y).sqrt()
+        return 0
 
 
     @classmethod
@@ -97,6 +111,7 @@ class USZipcode(models.Model):
             z.county      = row['County']
             z.county_fips = row['FIPS']
             z.kind        = row['Type']
+            z.area_code   = row['A/C']
             z.latitude    = Decimal( row.get('Lat' ,'0') ) or None
             z.longitude   = Decimal( row.get('Long','0') ) or None
             z.timezone    = tz_map.get( row.get('T/Z',''), 'UTC' )
@@ -124,7 +139,13 @@ class Zipcode(object):
         lon_distance = distance / 53.0  # miles per deg of longitude
         lat_range = ( self.latitude  - Decimal(lat_distance), self.latitude  + Decimal(lat_distance))
         lon_range = ( self.longitude - Decimal(lon_distance), self.longitude + Decimal(lon_distance))
-        # print(lat_range, lon_range)
 
-        return USZipcode.objects.filter(latitude__range=lat_range, longitude__range=lon_range)
+        v      = { 'lat':self.latitude, 'lon':self.longitude }
+        v['x'] = '(69.1 * (latitude  - {lat}))'.format(**v)
+        v['y'] = '(53   * (longitude - {lon}))'.format(**v)
+        distance_sql = 'sqrt({x}*{x} + {y}*{y})'.format(**v)
+
+        return USZipcode.objects.filter(latitude__range=lat_range, longitude__range=lon_range).extra(
+            select={'center_lat': self.latitude, 'center_lon': self.longitude, 'distance': distance_sql, }
+        ).order_by('distance')
 

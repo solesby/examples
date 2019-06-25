@@ -127,8 +127,21 @@ class Zipcode(object):
         self.latitude   = self.us_zipcode.latitude
         self.longitude  = self.us_zipcode.longitude
 
+    def calculate_distance(self, queryset):
+        v      = { 'lat':self.latitude, 'lon':self.longitude }
+        v['x'] = '(69.1 * (latitude  - {lat}))'.format(**v)
+        v['y'] = '(53   * (longitude - {lon}))'.format(**v)
+        distance_sql = 'sqrt({x}*{x} + {y}*{y})'.format(**v)
 
-    def within_distance(self, distance, use_km=False):
+        return queryset.extra( select={
+                'center_lat': self.latitude,
+                'center_lon': self.longitude,
+                'distance': distance_sql, } ).order_by('distance')
+
+    def filter(self, **kwargs):
+        return self.calculate_distance( USZipcode.objects.filter(**kwargs) )
+
+    def within_distance(self, distance, use_km=False, **kwargs):
         '''
         Return queryset of zipcodes within a box `distance` miles.
         Note: this uses a pre-calculated square for simple DB index
@@ -140,12 +153,6 @@ class Zipcode(object):
         lat_range = ( self.latitude  - Decimal(lat_distance), self.latitude  + Decimal(lat_distance))
         lon_range = ( self.longitude - Decimal(lon_distance), self.longitude + Decimal(lon_distance))
 
-        v      = { 'lat':self.latitude, 'lon':self.longitude }
-        v['x'] = '(69.1 * (latitude  - {lat}))'.format(**v)
-        v['y'] = '(53   * (longitude - {lon}))'.format(**v)
-        distance_sql = 'sqrt({x}*{x} + {y}*{y})'.format(**v)
-
-        return USZipcode.objects.filter(latitude__range=lat_range, longitude__range=lon_range).extra(
-            select={'center_lat': self.latitude, 'center_lon': self.longitude, 'distance': distance_sql, }
-        ).order_by('distance')
+        queryset = USZipcode.objects.filter(latitude__range=lat_range, longitude__range=lon_range, **kwargs)
+        return self.calculate_distance( queryset )
 

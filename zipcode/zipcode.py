@@ -127,6 +127,9 @@ class Zipcode(object):
         self.latitude   = self.us_zipcode.latitude
         self.longitude  = self.us_zipcode.longitude
 
+    def __str__(self):
+        return str(self.us_zipcode)
+
     def calculate_distance(self, queryset):
         v      = { 'lat':self.latitude, 'lon':self.longitude }
         v['x'] = '(69.1 * (latitude  - {lat}))'.format(**v)

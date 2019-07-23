@@ -122,10 +122,10 @@ class USZipcode(models.Model):
 class Zipcode(object):
 
     def __init__(self, zipcode):
-        self.us_zipcode = USZipcode.objects.get(zipcode=zipcode)
+        self.us_zipcode = USZipcode.objects.filter(zipcode=zipcode).first()
         self.zipcode    = zipcode
-        self.latitude   = self.us_zipcode.latitude
-        self.longitude  = self.us_zipcode.longitude
+        self.latitude   = self.us_zipcode.latitude  if self.us_zipcode else 0
+        self.longitude  = self.us_zipcode.longitude if self.us_zipcode else 0
 
     def __str__(self):
         return str(self.us_zipcode)
